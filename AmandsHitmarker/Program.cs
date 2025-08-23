@@ -7,11 +7,18 @@ using SPT.Reflection.Patching;
 using UnityEngine;
 using TMPro;
 using HarmonyLib;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
-using EFT.UI;
 using System.Linq;
+using Fika.Core.Coop.Players;
+using Fika.Core.Coop.Utils;
+using Fika.Core.Coop.GameMode;
+using EFT.HealthSystem;
+using Fika.Core.Coop.ObservedClasses;
+using Fika.Core.Networking;
+using Comfort.Common;
+using Fika.Core;
+using System.Net.Sockets;
 
 namespace AmandsHitmarker
 {
@@ -150,9 +157,10 @@ namespace AmandsHitmarker
         public static ConfigEntry<float> DamageIndicatorSize { get; set; }
         public static ConfigEntry<float> DamageIndicatorOffset { get; set; }
 
+
+
         private void Awake()
         {
-            Debug.LogError("AmandsHitmarker Awake()");
             Hook = new GameObject("Hitmarker");
             AmandsHitmarkerClassComponent = Hook.AddComponent<AmandsHitmarkerClass>();
             AmandsHitmarkerClass.HitmarkerAudioSource = Hook.AddComponent<AudioSource>();
@@ -297,8 +305,10 @@ namespace AmandsHitmarker
             new AmandsMenuUIPatch().Enable();
             new AmandsBattleUIScreenPatch().Enable();
             new AmandsSSAAPatch().Enable();
+            new AmandsRaidAudioPatch().Enable();
 
             AmandsHitmarkerHelper.Init();
+            AmandsHitmarkerFikaBridge.Init();
         }
         private static void HitmarkerButtonDrawer(ConfigEntryBase entry)
         {
@@ -476,28 +486,27 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(Player).GetMethod("ApplyDamageInfo", BindingFlags.Instance | BindingFlags.Public);
+            return typeof(CoopPlayer).GetMethod("ShotReactions", BindingFlags.Instance | BindingFlags.Public);
         }
         [PatchPostfix]
-        private static void PatchPostFix(ref Player __instance, DamageInfoStruct damageInfo, EBodyPart bodyPartType)
+        private static void PatchPostFix(ref CoopPlayer __instance, DamageInfoStruct shot, EBodyPart bodyPart)
         {
-            // Temporary old version support code
             bool IsYourPlayerAgresssor = false;
-            Player player = Traverse.Create(damageInfo).Field("Player").GetValue<object>() as Player;
+            Player player = Traverse.Create(shot).Field("Player").GetValue<object>() as Player;
             if (player != null)
             {
                 IsYourPlayerAgresssor = AmandsHitmarkerClass.Player != null && player == AmandsHitmarkerClass.Player;
             }
             else
             {
-                object playerObject = Traverse.Create(damageInfo).Field("Player").GetValue<object>();
+                object playerObject = Traverse.Create(shot).Field("Player").GetValue<object>();
                 if (playerObject != null)
                 {
                     string AggressorNickname = Traverse.Create(playerObject).Property("Nickname").GetValue<string>();
                     IsYourPlayerAgresssor = AggressorNickname == AmandsHitmarkerClass.playerNickname;
                 }
             }
-            if (IsYourPlayerAgresssor)
+            if (IsYourPlayerAgresssor && FikaBackendUtils.IsClient || FikaBackendUtils.IsServer) // Should stop bots from triggering hitmarkers if they are "you"
             {
                 if (AmandsHitmarkerClass.Player != null)
                 {
@@ -510,20 +519,23 @@ namespace AmandsHitmarker
                     }
                 }
                 AmandsHitmarkerClass.hitmarker = true;
-                AmandsHitmarkerClass.damageInfo = damageInfo;
-                AmandsHitmarkerClass.bodyPart = bodyPartType;
+                AmandsHitmarkerClass.damageInfo = shot;
+                AmandsHitmarkerClass.bodyPart = AmandsHitmarkerClass.bodyPart != EBodyPart.Chest ? AmandsHitmarkerClass.bodyPart : bodyPart;
                 if (AmandsHitmarkerClass.damageNumberTextMeshPro == null) return;
-                if ((AHitmarkerPlugin.EnableDamageNumber.Value && damageInfo.DidBodyDamage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f))
+                if ((AHitmarkerPlugin.EnableDamageNumber.Value && shot.Damage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f))
                 {
                     string text = "";
-                    AmandsHitmarkerClass.DamageNumber += damageInfo.DidBodyDamage;
+                    AmandsHitmarkerClass.DamageNumber += shot.Damage;
                     if (AHitmarkerPlugin.EnableDamageNumber.Value && AmandsHitmarkerClass.DamageNumber > 0.01f)
                     {
                         text = ((int)AmandsHitmarkerClass.DamageNumber).ToString() + " ";
                     }
                     if (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
                     {
-                        text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">" + (Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1)).ToString("F1") + "</color> ";
+                        if (AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
+                        {
+                            text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">" + (Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1)).ToString("F1") + "</color> ";
+                        }
                     }
                     AmandsHitmarkerClass.damageNumberTextMeshPro.text = text;
                     AmandsHitmarkerClass.damageNumberTextMeshPro.color = AHitmarkerPlugin.HitmarkerColor.Value;
@@ -535,7 +547,7 @@ namespace AmandsHitmarker
             {
                 if (AmandsHitmarkerClass.Player != null && __instance == AmandsHitmarkerClass.Player && AHitmarkerPlugin.EnableDamageIndicator.Value && AmandsHitmarkerClass.amandsDamageIndicator != null)
                 {
-                    AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(damageInfo.MasterOrigin);
+                    AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(shot.MasterOrigin);
                 }
             }
         }
@@ -572,7 +584,7 @@ namespace AmandsHitmarker
         [PatchPostfix]
         private static void PatchPostFix(ref Player __instance, Player aggressor, DamageInfoStruct damageInfo, EBodyPart bodyPart, EDamageType lethalDamageType)
         {
-            if (AmandsHitmarkerClass.Player != null && aggressor == AmandsHitmarkerClass.Player && __instance != AmandsHitmarkerClass.Player)
+            if (AmandsHitmarkerClass.Player != null && aggressor == AmandsHitmarkerClass.Player && __instance != AmandsHitmarkerClass.Player && FikaBackendUtils.IsServer)
             {
                 float distance = Vector3.Distance(aggressor.Position, __instance.Position);
                 if (distance < AHitmarkerPlugin.StartDistance.Value || distance > AHitmarkerPlugin.EndDistance.Value) return;
@@ -580,7 +592,15 @@ namespace AmandsHitmarker
                 AmandsHitmarkerClass.killDamageInfo = damageInfo;
                 AmandsHitmarkerClass.killBodyPart = bodyPart;
                 AmandsHitmarkerClass.killRole = Traverse.Create(Traverse.Create(__instance.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>();
-                AmandsHitmarkerClass.killExperience = Traverse.Create(Traverse.Create(__instance.Profile.Info).Field("Settings").GetValue<object>()).Field("Experience").GetValue<int>();
+                var coopAggressor = aggressor as CoopPlayer;
+                if (coopAggressor != null)
+                {
+                    var sessionCounters = coopAggressor.Profile.EftStats.SessionCounters;
+                    int totalXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillBase);
+                    int xpForThisKill = totalXp - AmandsHitmarkerClass.lastSessionXp;
+                    AmandsHitmarkerClass.killExperience = xpForThisKill;
+                    AmandsHitmarkerClass.lastSessionXp = totalXp;
+                }
                 AmandsHitmarkerClass.killPlayerName = __instance.Profile.Nickname;
                 AmandsHitmarkerClass.killPlayerSide = __instance.Side;
                 AmandsHitmarkerClass.killDistance = distance;
@@ -591,10 +611,70 @@ namespace AmandsHitmarker
                 AmandsHitmarkerClass.Killfeed();
                 AmandsHitmarkerClass.MultiKillfeed();
             }
-            if (AHitmarkerPlugin.EnableRaidKillfeed.Value && aggressor != null)
+            else if (!aggressor.IsYourPlayer && FikaBackendUtils.IsServer)
+            {
+                if (aggressor is CoopPlayer coopAggressor && coopAggressor != null)
+                {
+                    AmandsHitmarkerFikaBridge.SendKill(aggressor, __instance, damageInfo, bodyPart, lethalDamageType);
+                }  
+            }
+            else if (AmandsHitmarkerClass.Player != null && aggressor == AmandsHitmarkerClass.Player && __instance != AmandsHitmarkerClass.Player && FikaBackendUtils.IsClient)
+            {
+                var coopAggressor = aggressor as CoopPlayer;
+                if (coopAggressor != null)
+                {
+                    var sessionCounters = coopAggressor.Profile.EftStats.SessionCounters;
+
+                    // Base kill XP
+                    int totalXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillBase);
+                    int xpForThisKill = totalXp - AmandsHitmarkerClass.lastSessionXp;
+                    AmandsHitmarkerClass.killExperience = xpForThisKill;
+                    AmandsHitmarkerClass.lastSessionXp = totalXp;
+
+                    // Headshot XP
+                    int totalHeadshotXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillBodyPartBonus);
+                    int headshotXpForThisKill = totalHeadshotXp - AmandsHitmarkerClass.lastHeadshotXp;
+                    AmandsHitmarkerClass.HeadXp = headshotXpForThisKill;
+                    AmandsHitmarkerClass.lastHeadshotXp = totalHeadshotXp;
+
+                    // Streak XP
+                    int totalStreakXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillStreakBonus);
+                    int streakXpForThisKill = totalStreakXp - AmandsHitmarkerClass.lastStreakXp;
+                    if (streakXpForThisKill > 0)
+                    {
+                        AmandsHitmarkerClass.CurrentComboCount += 1;
+                    }
+                    else
+                    {
+                        AmandsHitmarkerClass.CurrentComboCount = 0;
+                    }
+                    AmandsHitmarkerClass.StreakXp = streakXpForThisKill;
+                    AmandsHitmarkerClass.lastStreakXp = totalStreakXp;
+                }
+            }
+            if (AHitmarkerPlugin.EnableRaidKillfeed.Value && aggressor != null && FikaBackendUtils.IsServer)
             {
                 if (AmandsHitmarkerClass.Player != null && AmandsHitmarkerClass.Player != aggressor && Vector3.Distance(AmandsHitmarkerClass.Player.Position, __instance.Position) > AHitmarkerPlugin.RaidKillDistance.Value) return;
                 AmandsHitmarkerClass.RaidKillfeed(aggressor.Side, Traverse.Create(Traverse.Create(aggressor.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>(), (aggressor.Side == EPlayerSide.Savage ? AmandsHitmarkerHelper.Transliterate(aggressor.Profile.Nickname) : aggressor.Profile.Nickname), damageInfo.Weapon == null ? "?" : AmandsHitmarkerHelper.Localized(damageInfo.Weapon.ShortName, 0), lethalDamageType, __instance.Side, Traverse.Create(Traverse.Create(__instance.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>(), (__instance.Side == EPlayerSide.Savage ? AmandsHitmarkerHelper.Transliterate(__instance.Profile.Nickname) : __instance.Profile.Nickname));
+            }
+        }
+    }
+
+    public class AmandsRaidAudioPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod()
+        {
+            // small window between loading in and in raid where sound doesn't work w.e
+            return typeof(CoopGame).GetProperty("RaidStarted", BindingFlags.Instance | BindingFlags.Public)
+                                   .GetSetMethod(true);
+        }
+
+        [PatchPostfix]
+        private static void PatchPostFix(bool value)
+        {
+            if (value)
+            {
+                AmandsHitmarkerClass.ReloadFiles();
             }
         }
     }

@@ -6,11 +6,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Networking;
 using EFT;
-using Comfort.Common;
 using TMPro;
 using static EFT.Player;
-using HarmonyLib;
-using EFT.UI;
 
 namespace AmandsHitmarker
 {
@@ -116,6 +113,13 @@ namespace AmandsHitmarker
         private static Color BleedColor = new Color(1.0f, 0.0f, 0.0f);
         private static AudioClip audioClip;
         private static Color ArmorHitmarkerColor = new Color(1.0f, 1.0f, 1.0f);
+        public static int lastSessionXp;
+        public static int HeadXp;
+        public static int lastHeadshotXp;
+        public static int StreakXp;
+        public static int lastStreakXp;
+        public static int CurrentComboCount;
+
 
         public static bool UpdateDamageNumber = false;
         public static float DamageNumber = 0f;
@@ -138,6 +142,7 @@ namespace AmandsHitmarker
         private static Keyframe[] keys;// = { new Keyframe(0f, 0f, 0f, 0f, 0.25f, 0.25f), new Keyframe(0.5f, 1f, 0f, 0f, 0.5f, 0.5f), new Keyframe(1f, 0f, 0f, 0f, 0.25f, 0.25f) };
         private static AnimationCurve AlphaAnimationCurve = new AnimationCurve();
         private static Keyframe[] AlphaKeys;// = { new Keyframe(1f, 1f, 0f, 0f, 0.25f, 0.25f), new Keyframe(1.5f, 0f, 0f, 0f, 0.25f, 0.25f) };
+
 
         public static void XPFormula()
         {
@@ -165,10 +170,11 @@ namespace AmandsHitmarker
             }*/
             VictimLevelExp = 175;
             VictimBotLevelExp = 100;
-            HeadShotMult = 1.2f;
+            HeadShotMult = 2.1f;
             LongShotDistance = 100;
             Combo = new List<int>() { 0, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
         }
+
         public static int GetKillingBonusPercent(int killed)
         {
             int num = Mathf.Clamp(killed - 1, 0, Combo.Count - 1);
@@ -651,7 +657,7 @@ namespace AmandsHitmarker
                                 }
                                 break;
                         }
-                        UpperText = UpperText + "HEADSHOT " + (int)(BaseExp * Mathf.Max(HeadShotMult - 1f, 0)) + "XP";
+                        UpperText = UpperText + "HEADSHOT " + (int)HeadXp + "XP";
                     }
                     else
                     {
@@ -1075,13 +1081,13 @@ namespace AmandsHitmarker
                         }
                         if (killBodyPart == EBodyPart.Head && AHitmarkerPlugin.KillHeadshotXP.Value == EHeadshotXP.OnFormula)
                         {
-                            HeadshotExp = (int)((float)BaseExp * Mathf.Max(HeadShotMult - 1f,0));
+                            HeadshotExp = (int)HeadXp;
                         }
                         if (AHitmarkerPlugin.KillStreakXP.Value)
                         {
-                            if (Combo.Count != 0)
+                            if (CurrentComboCount != 0)
                             {
-                                StreakExp = (int)((float)BaseExp * ((float)GetKillingBonusPercent(Kills) / 100f));
+                                StreakExp = (int)StreakXp;
                             }
                         }
                         End = "<b>" + (int)(BaseExp + HeadshotExp + StreakExp) + "XP</b>";
