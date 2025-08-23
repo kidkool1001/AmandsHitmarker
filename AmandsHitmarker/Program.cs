@@ -486,27 +486,29 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(CoopPlayer).GetMethod("ShotReactions", BindingFlags.Instance | BindingFlags.Public);
+            return typeof(Player).GetMethod("ApplyDamageInfo", BindingFlags.Instance | BindingFlags.Public);
         }
         [PatchPostfix]
-        private static void PatchPostFix(ref CoopPlayer __instance, DamageInfoStruct shot, EBodyPart bodyPart)
+        private static void PatchPostFix(ref Player __instance, DamageInfoStruct damageInfo, EBodyPart bodyPartType)
         {
+            // Temporary old version support code
+            if (!FikaBackendUtils.IsServer) return;
             bool IsYourPlayerAgresssor = false;
-            Player player = Traverse.Create(shot).Field("Player").GetValue<object>() as Player;
+            Player player = Traverse.Create(damageInfo).Field("Player").GetValue<object>() as Player;
             if (player != null)
             {
                 IsYourPlayerAgresssor = AmandsHitmarkerClass.Player != null && player == AmandsHitmarkerClass.Player;
             }
             else
             {
-                object playerObject = Traverse.Create(shot).Field("Player").GetValue<object>();
+                object playerObject = Traverse.Create(damageInfo).Field("Player").GetValue<object>();
                 if (playerObject != null)
                 {
                     string AggressorNickname = Traverse.Create(playerObject).Property("Nickname").GetValue<string>();
                     IsYourPlayerAgresssor = AggressorNickname == AmandsHitmarkerClass.playerNickname;
                 }
             }
-            if (IsYourPlayerAgresssor && FikaBackendUtils.IsClient || FikaBackendUtils.IsServer) // Should stop bots from triggering hitmarkers if they are "you"
+            if (IsYourPlayerAgresssor)
             {
                 if (AmandsHitmarkerClass.Player != null)
                 {
@@ -519,23 +521,20 @@ namespace AmandsHitmarker
                     }
                 }
                 AmandsHitmarkerClass.hitmarker = true;
-                AmandsHitmarkerClass.damageInfo = shot;
-                AmandsHitmarkerClass.bodyPart = AmandsHitmarkerClass.bodyPart != EBodyPart.Chest ? AmandsHitmarkerClass.bodyPart : bodyPart;
+                AmandsHitmarkerClass.damageInfo = damageInfo;
+                AmandsHitmarkerClass.bodyPart = bodyPartType;
                 if (AmandsHitmarkerClass.damageNumberTextMeshPro == null) return;
-                if ((AHitmarkerPlugin.EnableDamageNumber.Value && shot.Damage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f))
+                if ((AHitmarkerPlugin.EnableDamageNumber.Value && damageInfo.DidBodyDamage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f))
                 {
                     string text = "";
-                    AmandsHitmarkerClass.DamageNumber += shot.Damage;
+                    AmandsHitmarkerClass.DamageNumber += damageInfo.DidBodyDamage;
                     if (AHitmarkerPlugin.EnableDamageNumber.Value && AmandsHitmarkerClass.DamageNumber > 0.01f)
                     {
                         text = ((int)AmandsHitmarkerClass.DamageNumber).ToString() + " ";
                     }
                     if (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
                     {
-                        if (AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
-                        {
-                            text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">" + (Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1)).ToString("F1") + "</color> ";
-                        }
+                        text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">" + (Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1)).ToString("F1") + "</color> ";
                     }
                     AmandsHitmarkerClass.damageNumberTextMeshPro.text = text;
                     AmandsHitmarkerClass.damageNumberTextMeshPro.color = AHitmarkerPlugin.HitmarkerColor.Value;
@@ -543,11 +542,21 @@ namespace AmandsHitmarker
                     AmandsHitmarkerClass.UpdateDamageNumber = false;
                 }
             }
+            else if (!IsYourPlayerAgresssor)
+            {
+                IPlayerOwner playerOwner = damageInfo.Player;
+                if (playerOwner == null) return;
+                Player aggressor = Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerOwner.iPlayer.ProfileId);
+                if (aggressor == null) return;
+                Player victim = __instance;
+
+                AmandsHitmarkerFikaBridge.SendHitmarker(aggressor, victim, damageInfo, bodyPartType);
+            }
             else
             {
                 if (AmandsHitmarkerClass.Player != null && __instance == AmandsHitmarkerClass.Player && AHitmarkerPlugin.EnableDamageIndicator.Value && AmandsHitmarkerClass.amandsDamageIndicator != null)
                 {
-                    AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(shot.MasterOrigin);
+                    AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(damageInfo.MasterOrigin);
                 }
             }
         }

@@ -59,6 +59,69 @@ public static class AmandsHitmarkerFikaBridge
                     );
                 }
             });
+            evt.Manager.RegisterPacket<HitmarkerPacket>(packet =>
+            {
+                bool isLocalPlayerAggressor = AmandsHitmarkerClass.Player != null &&
+                                              string.Equals(AmandsHitmarkerClass.Player.ProfileId?.Trim(),
+                                                            packet.AttackerId?.Trim(),
+                                                            StringComparison.OrdinalIgnoreCase);
+
+                bool isLocalPlayerVictim = AmandsHitmarkerClass.Player != null &&
+                                              string.Equals(AmandsHitmarkerClass.Player.ProfileId?.Trim(),
+                                                            packet.VictimId?.Trim(),
+                                                            StringComparison.OrdinalIgnoreCase);
+
+                if (!isLocalPlayerAggressor)
+                    return;
+                DamageInfoStruct damageInfo = new DamageInfoStruct
+                {
+                    HitPoint = packet.HitPoint,
+                    Damage = packet.Damage,
+                    DamageType = packet.DamageType,
+                    ArmorDamage = packet.ArmorDamage
+                };
+                if (AmandsHitmarkerClass.Player != null )
+                {
+                    float distance = Vector3.Distance(AmandsHitmarkerClass.Player.Position, packet.TargetPosition);
+                    if (distance < AHitmarkerPlugin.StartDistance.Value || distance > AHitmarkerPlugin.EndDistance.Value)
+                    {
+                        AmandsHitmarkerClass.armorHitmarker = false;
+                        AmandsHitmarkerClass.armorBreak = false;
+                        return;
+                    }
+                }
+                AmandsHitmarkerClass.hitmarker = true;
+                AmandsHitmarkerClass.damageInfo = damageInfo;
+                AmandsHitmarkerClass.bodyPart = packet.BodyPart;
+                if (AmandsHitmarkerClass.damageNumberTextMeshPro == null) return;
+                if ((AHitmarkerPlugin.EnableDamageNumber.Value && packet.Damage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && packet.ArmorDamage > 0.01f))
+                {
+                    string text = "";
+                    AmandsHitmarkerClass.DamageNumber += packet.Damage;
+                    if (AHitmarkerPlugin.EnableDamageNumber.Value && AmandsHitmarkerClass.DamageNumber > 0.01f)
+                    {
+                        text = ((int)AmandsHitmarkerClass.DamageNumber).ToString() + " ";
+                    }
+                    if (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
+                    {
+                        if (AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
+                        {
+                            text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">" + (Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1)).ToString("F1") + "</color> ";
+                        }
+                    }
+                    AmandsHitmarkerClass.damageNumberTextMeshPro.text = text;
+                    AmandsHitmarkerClass.damageNumberTextMeshPro.color = AHitmarkerPlugin.HitmarkerColor.Value;
+                    AmandsHitmarkerClass.damageNumberTextMeshPro.alpha = 1f;
+                    AmandsHitmarkerClass.UpdateDamageNumber = false;
+                }
+                else
+                {
+                    if (AmandsHitmarkerClass.Player != null && isLocalPlayerVictim && AHitmarkerPlugin.EnableDamageIndicator.Value && AmandsHitmarkerClass.amandsDamageIndicator != null)
+                    {
+                        AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(packet.MasterOrigin);
+                    }
+                }
+            });
         });
     }
     public static void SendKill(Player aggressor, Player victim, DamageInfoStruct damageInfo,
@@ -93,4 +156,29 @@ public static class AmandsHitmarkerFikaBridge
             server.SendDataToAll(ref packet, LiteNetLib.DeliveryMethod.ReliableOrdered);
         }
     }
+    public static void SendHitmarker(Player aggressor, Player victim, DamageInfoStruct damageInfo, EBodyPart bodyPart)
+    {
+        if (!FikaBackendUtils.IsServer) return;
+
+        if (aggressor == null || victim == null) return;
+
+        var packet = new HitmarkerPacket
+        {
+            AttackerId = aggressor.ProfileId,
+            VictimId = victim.ProfileId,
+            BodyPart = bodyPart,
+            Damage = damageInfo.DidBodyDamage,
+            ArmorDamage = damageInfo.DidArmorDamage,
+            TargetPosition = victim.Position,
+            MasterOrigin = damageInfo.MasterOrigin,
+            HitPoint = damageInfo.HitPoint,
+            DamageType = damageInfo.DamageType
+        };
+
+        if (Singleton<IFikaNetworkManager>.Instance is FikaServer server)
+        {
+            server.SendDataToAll(ref packet, LiteNetLib.DeliveryMethod.Unreliable);
+        }
+    }
+
 }

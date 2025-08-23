@@ -50,3 +50,60 @@ public struct KillPacket : INetSerializable
         Distance = reader.GetFloat();
     }
 }
+public class HitmarkerPacket : INetSerializable
+{
+    public string AttackerId;
+    public string VictimId;
+    public EBodyPart BodyPart;
+    public float Damage;
+    public float ArmorDamage;
+    public EDamageType DamageType;
+    public Vector3 TargetPosition;
+    public Vector3 MasterOrigin;
+    public Vector3 HitPoint;
+    
+
+    public void Serialize(NetDataWriter writer)
+    {
+        writer.Put(AttackerId);
+        writer.Put(VictimId);
+        writer.Put((int)BodyPart);
+        writer.Put(Damage);
+        writer.Put(ArmorDamage);
+        writer.Put((int)DamageType);
+
+        // Vector3 TargetPosition
+        writer.Put(TargetPosition.x);
+        writer.Put(TargetPosition.y);
+        writer.Put(TargetPosition.z);
+
+        // Vector3 MasterOrigin
+        writer.Put(MasterOrigin.x);
+        writer.Put(MasterOrigin.y);
+        writer.Put(MasterOrigin.z);
+
+        // Vector3 HitPoint
+        writer.Put(HitPoint.x);
+        writer.Put(HitPoint.y);
+        writer.Put(HitPoint.z);
+    }
+
+    public void Deserialize(NetDataReader reader)
+    {
+        AttackerId = reader.GetString();
+        VictimId = reader.GetString();
+        BodyPart = (EBodyPart)reader.GetInt();
+        Damage = reader.GetFloat();
+        ArmorDamage = reader.GetFloat();
+        DamageType = (EDamageType)reader.GetInt();
+
+        // Vector3 TargetPosition
+        TargetPosition = new Vector3(reader.GetFloat(), reader.GetFloat(), reader.GetFloat());
+
+        // Vector3 MasterOrigin
+        MasterOrigin = new Vector3(reader.GetFloat(), reader.GetFloat(), reader.GetFloat());
+
+        // Vector3 HitPoint
+        HitPoint = new Vector3(reader.GetFloat(), reader.GetFloat(), reader.GetFloat());
+    }
+}
