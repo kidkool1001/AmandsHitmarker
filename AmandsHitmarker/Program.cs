@@ -580,10 +580,11 @@ public class AmandsDamagePatch : ModulePatch
         }
         else
         {
-            if (AmandsHitmarkerClass.Player != null && __instance == AmandsHitmarkerClass.Player && AHitmarkerPlugin.EnableDamageIndicator.Value && AmandsHitmarkerClass.amandsDamageIndicator != null)
-            {
+            if (AmandsHitmarkerClass.Player != null && 
+                __instance == AmandsHitmarkerClass.Player && 
+                AHitmarkerPlugin.EnableDamageIndicator.Value && 
+                AmandsHitmarkerClass.amandsDamageIndicator != null)
                 AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(damageInfo.MasterOrigin);
-            }
         }
     }
 }

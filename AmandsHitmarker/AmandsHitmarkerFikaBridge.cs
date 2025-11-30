@@ -47,17 +47,17 @@ public static class AmandsHitmarkerFikaBridge
                     AmandsHitmarkerClass.MultiKillfeed();
 
                 }
+                
                 if (AHitmarkerPlugin.EnableRaidKillfeed.Value)
-                {
                     AmandsHitmarkerClass.RaidKillfeed(packet.AggressorSide,
-                        packet.AggressorRole,
-                        packet.AggressorName,
-                        packet.WeaponName,
-                        packet.LethalDamageType,
-                        packet.VictimSide,
-                        packet.VictimRole,
-                        packet.VictimName);
-                }
+                                                    packet.AggressorRole,
+                                                    packet.AggressorName,
+                                                    packet.WeaponName,
+                                                    packet.LethalDamageType,
+                                                    packet.VictimSide,
+                                                    packet.VictimRole,
+                                                    packet.VictimName);
+                
             });
             
             evt.Manager.RegisterPacket<HitmarkerPacket>(packet =>
@@ -87,36 +87,47 @@ public static class AmandsHitmarkerFikaBridge
                 {
                     float distance = Vector3.Distance(AmandsHitmarkerClass.Player.Position, packet.TargetPosition);
                     
-                    if (distance < AHitmarkerPlugin.StartDistance.Value || distance > AHitmarkerPlugin.EndDistance.Value)
+                    if (distance < AHitmarkerPlugin.StartDistance.Value || 
+                        distance > AHitmarkerPlugin.EndDistance.Value)
                     {
                         AmandsHitmarkerClass.armorHitmarker = false;
                         AmandsHitmarkerClass.armorBreak = false;
                         return;
                     }
                 }
+                
                 AmandsHitmarkerClass.hitmarker = true;
                 AmandsHitmarkerClass.damageInfo = damageInfo;
                 AmandsHitmarkerClass.bodyPart = packet.BodyPart;
-                if (AmandsHitmarkerClass.damageNumberTextMeshPro == null) return;
-                if ((AHitmarkerPlugin.EnableDamageNumber.Value && packet.Damage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && packet.ArmorDamage > 0.01f))
+                
+                if (AmandsHitmarkerClass.damageNumberTextMeshPro == null) 
+                    return;
+                
+                if ((AHitmarkerPlugin.EnableDamageNumber.Value && packet.Damage > 0.01f) || 
+                    (AHitmarkerPlugin.EnableArmorDamageNumber.Value && packet.ArmorDamage > 0.01f))
                 {
                     string text = "";
+                    
                     AmandsHitmarkerClass.DamageNumber += packet.Damage;
-                    if (AHitmarkerPlugin.EnableDamageNumber.Value && AmandsHitmarkerClass.DamageNumber > 0.01f)
-                    {
-                        text = ((int)AmandsHitmarkerClass.DamageNumber).ToString() + " ";
-                    }
-                    if (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
+                    
+                    if (AHitmarkerPlugin.EnableDamageNumber.Value && 
+                        AmandsHitmarkerClass.DamageNumber > 0.01f)
+                        text = (int)AmandsHitmarkerClass.DamageNumber + " ";
+                    
+                    if (AHitmarkerPlugin.EnableArmorDamageNumber.Value && 
+                        AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
                     {
                         if (AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
                         {
-                            text = text + "<color=#" + 
+                            text = text + 
+                                   "<color=#" + 
                                    ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + 
                                    ">" + 
                                    Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1).ToString("F1") + 
                                    "</color> ";
                         }
                     }
+                    
                     AmandsHitmarkerClass.damageNumberTextMeshPro.text = text;
                     AmandsHitmarkerClass.damageNumberTextMeshPro.color = AHitmarkerPlugin.HitmarkerColor.Value;
                     AmandsHitmarkerClass.damageNumberTextMeshPro.alpha = 1f;
