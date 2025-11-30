@@ -874,12 +874,14 @@ namespace AmandsHitmarker
             BRHImage.color = Color.clear;
             BRHRect.localRotation = Quaternion.Euler(0, 0, 45);
 
-            if (AHitmarkerPlugin.EnableDamageIndicator.Value)
-            {
-                GameObject damageIndicatorGameObject = new GameObject("DamageIndicator");
-                damageIndicatorGameObject.transform.SetParent(parent.parent);
-                amandsDamageIndicator = damageIndicatorGameObject.AddComponent<AmandsDamageIndicator>();
-            }
+            if (!AHitmarkerPlugin.EnableDamageIndicator.Value) 
+                return;
+            
+            GameObject damageIndicatorGameObject = new GameObject("DamageIndicator");
+            
+            damageIndicatorGameObject.transform.SetParent(parent.parent);
+            
+            amandsDamageIndicator = damageIndicatorGameObject.AddComponent<AmandsDamageIndicator>();
         }
         public static void DestroyGameObjects()
         {
@@ -898,14 +900,18 @@ namespace AmandsHitmarker
         }
         public static void CreateUpperText(string text, int fontSize, float time, float OpacitySpeed)
         {
-            if (!AHitmarkerPlugin.EnableKillfeed.Value) return;
+            if (!AHitmarkerPlugin.EnableKillfeed.Value) 
+                return;
+            
             GameObject TextGameObject = new GameObject("TextGameObject");
+            
             TextGameObject.transform.SetParent(killListGameObject.transform);
+            
             if (AHitmarkerPlugin.KillChildDirection.Value)
-            {
                 TextGameObject.transform.SetSiblingIndex(0);
-            }
+            
             AmandsKillfeedText TempAmandsAnimatedText = TextGameObject.AddComponent<AmandsKillfeedText>();
+            
             TempAmandsAnimatedText.text = text;
             TempAmandsAnimatedText.color = AHitmarkerPlugin.KillTextColor.Value;
             TempAmandsAnimatedText.fontSize = fontSize;
@@ -918,19 +924,24 @@ namespace AmandsHitmarker
         }
         public static void CreateKillText()
         {
-            if (!AHitmarkerPlugin.EnableKillfeed.Value) return;
+            if (!AHitmarkerPlugin.EnableKillfeed.Value) 
+                return;
 
             KillfeedColor = AHitmarkerPlugin.KillTextColor.Value;
+            
             switch (killPlayerSide)
             {
                 case EPlayerSide.Usec:
                     KillfeedColor = AHitmarkerPlugin.UsecColor.Value;
+                    
                     break;
                 case EPlayerSide.Bear:
                     KillfeedColor = AHitmarkerPlugin.BearColor.Value;
+                    
                     break;
                 case EPlayerSide.Savage:
                     KillfeedColor = AHitmarkerPlugin.ScavColor.Value;
+                    
                     break;
             }
             switch (killLethalDamageType)
@@ -938,6 +949,7 @@ namespace AmandsHitmarker
                 case EDamageType.GrenadeFragment:
                 case EDamageType.Explosion:
                     KillfeedColor = AHitmarkerPlugin.ThrowWeaponColor.Value;
+                    
                     break;
             }
             /*if (killPlayerSide == EPlayerSide.Savage)
@@ -950,18 +962,22 @@ namespace AmandsHitmarker
             Color RoleColor = Color.white;
             string Name = "";
             string End = "";
+            
             switch (killPlayerSide)
             {
                 case EPlayerSide.Usec:
                     RoleName = "USEC";
                     RoleColor = AHitmarkerPlugin.UsecColor.Value;
+                    
                     break;
                 case EPlayerSide.Bear:
                     RoleName = "BEAR";
                     RoleColor = AHitmarkerPlugin.BearColor.Value;
+                    
                     break;
                 case EPlayerSide.Savage:
                     RoleColor = AHitmarkerPlugin.ScavColor.Value;
+                    
                     break;
             }
             if (killPlayerSide == EPlayerSide.Savage)
@@ -972,15 +988,22 @@ namespace AmandsHitmarker
                     case "BLOODHOUND":
                         RoleColor = AHitmarkerPlugin.BloodhoundColor.Value;
                         KillfeedColor = RoleColor;
+                        
                         break;
                     case "RAIDER":
                         RoleColor = AHitmarkerPlugin.RaiderColor.Value;
                         KillfeedColor = RoleColor;
+                        
                         break;
                     default:
-                        if (AmandsHitmarkerHelper.IsFollower(killRole)) RoleColor = AHitmarkerPlugin.FollowerColor.Value;
-                        if (AmandsHitmarkerHelper.CountAsBossForStatistics(killRole)) RoleColor = AHitmarkerPlugin.BossColor.Value;
+                        if (AmandsHitmarkerHelper.IsFollower(killRole)) 
+                            RoleColor = AHitmarkerPlugin.FollowerColor.Value;
+                        
+                        if (AmandsHitmarkerHelper.CountAsBossForStatistics(killRole)) 
+                            RoleColor = AHitmarkerPlugin.BossColor.Value;
+                        
                         KillfeedColor = RoleColor;
+                        
                         break;
                 }
             }
@@ -988,9 +1011,11 @@ namespace AmandsHitmarker
             {
                 case EKillNameColor.None:
                     RoleColor = AHitmarkerPlugin.KillTextColor.Value;
+                    
                     break;
                 case EKillNameColor.SingleColor:
                     RoleColor = AHitmarkerPlugin.KillNameSingleColor.Value;
+                    
                     break;
             }
             switch (AHitmarkerPlugin.KillStart.Value)
@@ -1001,7 +1026,9 @@ namespace AmandsHitmarker
                         aggNickname = Player.Profile.Nickname;
                         aggPlayerSide = Player.Profile.Side;
                     }
+                    
                     Color playerRoleColor = AHitmarkerPlugin.KillTextColor.Value;
+                    
                     switch (AHitmarkerPlugin.KillNameColor.Value)
                     {
                         case EKillNameColor.SingleColor:
@@ -1020,15 +1047,34 @@ namespace AmandsHitmarker
                                     playerRoleColor = AHitmarkerPlugin.ScavColor.Value;
                                     break;
                             }
+                            
                             break;
                     }
-                    Start = "<b><color=#" + ColorUtility.ToHtmlStringRGB(playerRoleColor) + ">" + aggNickname + "</color> " + killWeaponName + " </b> ";
+                    
+                    Start = "<b><color=#" + 
+                            ColorUtility.ToHtmlStringRGB(playerRoleColor) + 
+                            ">" + 
+                            aggNickname + 
+                            "</color> " + 
+                            killWeaponName + 
+                            " </b> ";
+                    
                     break;
                 case EKillStart.Weapon:
-                    Start = "<b>" + killWeaponName + "</b> ";
+                    Start = "<b>" + 
+                            killWeaponName + 
+                            "</b> ";
+                    
                     break;
                 case EKillStart.WeaponRole:
-                    Start = "<b>" + killWeaponName + " <color=#" + ColorUtility.ToHtmlStringRGB(RoleColor) + ">" + RoleName + "</color></b> ";
+                    Start = "<b>" + 
+                            killWeaponName + 
+                            " <color=#" + 
+                            ColorUtility.ToHtmlStringRGB(RoleColor) + 
+                            ">" + 
+                            RoleName + 
+                            "</color></b> ";
+                    
                     break;
             }
             switch (AHitmarkerPlugin.KillNameColor.Value)
@@ -1043,54 +1089,74 @@ namespace AmandsHitmarker
                     Name = "<color=#" + ColorUtility.ToHtmlStringRGB(KillfeedColor) + ">" + (killPlayerSide == EPlayerSide.Savage ? AmandsHitmarkerHelper.Transliterate(killPlayerName) : killPlayerName) + "</color> ";
                     break;
             }
-            if (killDistance > AHitmarkerPlugin.KillDistanceThreshold.Value && !(AHitmarkerPlugin.KillEnd.Value == EKillEnd.Distance || AHitmarkerPlugin.KillEnd.Value == EKillEnd.None))
+            if (killDistance > AHitmarkerPlugin.KillDistanceThreshold.Value && 
+                !(AHitmarkerPlugin.KillEnd.Value == EKillEnd.Distance || AHitmarkerPlugin.KillEnd.Value == EKillEnd.None))
             {
-                End = "<b>" + ((int)killDistance) + "M</b>";
+                End = "<b>" + (int)killDistance + "M</b>";
             }
             else
             {
                 EKillEnd killEnd = AHitmarkerPlugin.KillEnd.Value;
-                if (killEnd == EKillEnd.Level && killPlayerSide == EPlayerSide.Savage) killEnd = EKillEnd.Experience;
+                
+                if (killEnd == EKillEnd.Level && 
+                    killPlayerSide == EPlayerSide.Savage) 
+                    killEnd = EKillEnd.Experience;
+                
                 switch (killEnd)
                 {
                     case EKillEnd.Bodypart:
-                        End = "<b>" + killBodyPart + "</b>";
+                        End = "<b>" + 
+                              killBodyPart + 
+                              "</b>";
+                        
                         break;
                     case EKillEnd.Role:
-                        End = "<b>" + "<color=#" + ColorUtility.ToHtmlStringRGB(RoleColor) + ">" + RoleName + "</color></b>";
+                        End = "<b>" + 
+                              "<color=#" + 
+                              ColorUtility.ToHtmlStringRGB(RoleColor) + 
+                              ">" + 
+                              RoleName + 
+                              "</color></b>";
+                        
                         break;
                     case EKillEnd.Experience:
                         float BaseExp = 0;
                         float HeadshotExp = 0;
                         float StreakExp = 0;
+                        
                         switch (killPlayerSide)
                         {
                             case EPlayerSide.Usec:
                                 BaseExp = VictimLevelExp;
+                                
                                 break;
                             case EPlayerSide.Bear:
                                 BaseExp = VictimLevelExp;
+                                
                                 break;
                             case EPlayerSide.Savage:
                                 BaseExp = killExperience;
+                                
                                 if (BaseExp < 0)
-                                {
                                     BaseExp = VictimBotLevelExp;
-                                }
+                                
                                 break;
                         }
-                        if (killBodyPart == EBodyPart.Head && AHitmarkerPlugin.KillHeadshotXP.Value == EHeadshotXP.OnFormula)
-                        {
+                        if (killBodyPart == EBodyPart.Head && 
+                            AHitmarkerPlugin.KillHeadshotXP.Value == EHeadshotXP.OnFormula)
                             HeadshotExp = (int)HeadXp;
-                        }
+                        
                         if (AHitmarkerPlugin.KillStreakXP.Value)
                         {
                             if (CurrentComboCount != 0)
-                            {
                                 StreakExp = (int)StreakXp;
-                            }
+                            
                         }
-                        End = "<b>" + (int)(BaseExp + HeadshotExp + StreakExp) + "XP</b>";
+                        
+                        End = "<b>" + 
+                              (int)(BaseExp + HeadshotExp + StreakExp) + 
+                              "XP</b>";
+                        
                         break;
                     case EKillEnd.Distance:
                         End = "<b>" + ((int)killDistance) + "M</b>";
@@ -1104,20 +1170,22 @@ namespace AmandsHitmarker
                 }
             }
             GameObject TextGameObject = new GameObject("KillTextGameObject");
+            
             TextGameObject.transform.SetParent(killListGameObject.transform);
+            
             if (AHitmarkerPlugin.KillChildDirection.Value)
-            {
                 TextGameObject.transform.SetSiblingIndex(0);
-            }
+            
             AmandsKillfeedText TempAmandsAnimatedText = TextGameObject.AddComponent<AmandsKillfeedText>();
+            
             TempAmandsAnimatedText.text = Start + Name + End;
             TempAmandsAnimatedText.color = AHitmarkerPlugin.KillTextColor.Value;
             TempAmandsAnimatedText.fontSize = AHitmarkerPlugin.KillFontSize.Value;
             TempAmandsAnimatedText.outlineWidth = AHitmarkerPlugin.KillFontOutline.Value;
+            
             if (AHitmarkerPlugin.KillFontUpperCase.Value)
-            {
                 TempAmandsAnimatedText.fontStyles = FontStyles.UpperCase;
-            }
+            
             TempAmandsAnimatedText.time = AHitmarkerPlugin.KillTime.Value;
             TempAmandsAnimatedText.OpacitySpeed = AHitmarkerPlugin.KillOpacitySpeed.Value;
             TempAmandsAnimatedText.textAlignmentOptions = AHitmarkerPlugin.KillTextAlignment.Value;
@@ -1126,11 +1194,13 @@ namespace AmandsHitmarker
         }
         public static void RaidKillfeed(EPlayerSide aggressorSide, WildSpawnType aggressorRole, string aggressorNickname, string weaponName, EDamageType lethalDamageType, EPlayerSide victimSide, WildSpawnType victimRole, string victimNickname)
         {
-            if (!AHitmarkerPlugin.EnableRaidKillfeed.Value) return;
+            if (!AHitmarkerPlugin.EnableRaidKillfeed.Value) 
+                return;
 
             string Start = "";
             string aggressorRoleName = "";
             Color aggressorColor = AHitmarkerPlugin.KillTextColor.Value;
+            
             switch (aggressorSide)
             {
                 case EPlayerSide.Usec:
@@ -1145,6 +1215,7 @@ namespace AmandsHitmarker
                     aggressorColor = AHitmarkerPlugin.ScavColor.Value;
                     break;
             }
+            
             if (aggressorSide == EPlayerSide.Savage)
             {
                 aggressorRoleName = AmandsHitmarkerHelper.Localized(AmandsHitmarkerHelper.GetScavRoleKey(aggressorRole), EStringCase.Upper);
@@ -1157,14 +1228,19 @@ namespace AmandsHitmarker
                         aggressorColor = AHitmarkerPlugin.RaiderColor.Value;
                         break;
                     default:
-                        if (AmandsHitmarkerHelper.IsFollower(aggressorRole)) aggressorColor = AHitmarkerPlugin.FollowerColor.Value;
-                        if (AmandsHitmarkerHelper.CountAsBossForStatistics(aggressorRole)) aggressorColor = AHitmarkerPlugin.BossColor.Value;
+                        if (AmandsHitmarkerHelper.IsFollower(aggressorRole)) 
+                            aggressorColor = AHitmarkerPlugin.FollowerColor.Value;
+                        
+                        if (AmandsHitmarkerHelper.CountAsBossForStatistics(aggressorRole)) 
+                            aggressorColor = AHitmarkerPlugin.BossColor.Value;
                         break;
                 }
             }
+            
             string End;
             string victimRoleName = "";
             Color victimColor = AHitmarkerPlugin.KillTextColor.Value;
+            
             switch (victimSide)
             {
                 case EPlayerSide.Usec:
@@ -1191,8 +1267,12 @@ namespace AmandsHitmarker
                         victimColor = AHitmarkerPlugin.RaiderColor.Value;
                         break;
                     default:
-                        if (AmandsHitmarkerHelper.IsFollower(victimRole)) victimColor = AHitmarkerPlugin.FollowerColor.Value;
-                        if (AmandsHitmarkerHelper.CountAsBossForStatistics(victimRole)) victimColor = AHitmarkerPlugin.BossColor.Value;
+                        if (AmandsHitmarkerHelper.IsFollower(victimRole)) 
+                            victimColor = AHitmarkerPlugin.FollowerColor.Value;
+                        
+                        if (AmandsHitmarkerHelper.CountAsBossForStatistics(victimRole)) 
+                            victimColor = AHitmarkerPlugin.BossColor.Value;
+                        
                         break;
                 }
             }
@@ -1208,39 +1288,73 @@ namespace AmandsHitmarker
                     victimColor = AHitmarkerPlugin.KillNameSingleColor.Value;
                     break;
             }
+            
             if (AHitmarkerPlugin.RaidKillRole.Value)
             {
-                Start = "<b><color=#" + ColorUtility.ToHtmlStringRGB(aggressorColor) + ">" + aggressorRoleName + "</b> " + aggressorNickname + "</color> " + "<b>" + weaponName + "</b> ";
-                if (AHitmarkerPlugin.RaidKillNameColor.Value == EKillNameColor.Colored && (lethalDamageType == EDamageType.GrenadeFragment || lethalDamageType == EDamageType.Explosion))
-                {
-                    End = "<b><color=#" + ColorUtility.ToHtmlStringRGB(victimColor) + ">" + victimRoleName + "</b></color><color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ThrowWeaponColor.Value) + "> " + victimNickname;
-                }
+                Start = "<b><color=#" + 
+                        ColorUtility.ToHtmlStringRGB(aggressorColor) + 
+                        ">" + 
+                        aggressorRoleName + 
+                        "</b> " + 
+                        aggressorNickname + 
+                        "</color> " + 
+                        "<b>" + 
+                        weaponName + 
+                        "</b> ";
+                
+                if (AHitmarkerPlugin.RaidKillNameColor.Value == EKillNameColor.Colored && 
+                    (lethalDamageType == EDamageType.GrenadeFragment || lethalDamageType == EDamageType.Explosion))
+                    End = "<b><color=#" + 
+                          ColorUtility.ToHtmlStringRGB(victimColor) + 
+                          ">" + 
+                          victimRoleName + 
+                          "</b></color><color=#" + 
+                          ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ThrowWeaponColor.Value) + 
+                          "> " + 
+                          victimNickname;
                 else
-                {
-                    End = "<b><color=#" + ColorUtility.ToHtmlStringRGB(victimColor) + ">" + victimRoleName + "</b> " + victimNickname + "</color>";
-                }
+                    End = "<b><color=#" + 
+                          ColorUtility.ToHtmlStringRGB(victimColor) + 
+                          ">" + 
+                          victimRoleName + 
+                          "</b> " + 
+                          victimNickname + 
+                          "</color>";
             }
             else
             {
-                Start = "<color=#" + ColorUtility.ToHtmlStringRGB(aggressorColor) + ">" + aggressorNickname + "</color> " + "<b>" + weaponName + "</b> ";
-                End = "<color=#" + ColorUtility.ToHtmlStringRGB(victimColor) + ">" + victimNickname + "</color>";
+                Start = "<color=#" + 
+                        ColorUtility.ToHtmlStringRGB(aggressorColor) + 
+                        ">" + 
+                        aggressorNickname + 
+                        "</color> " + 
+                        "<b>" + 
+                        weaponName + 
+                        "</b> ";
+                End = "<color=#" + 
+                      ColorUtility.ToHtmlStringRGB(victimColor) + 
+                      ">" + 
+                      victimNickname + 
+                      "</color>";
             }
 
             GameObject TextGameObject = new GameObject("RaidKillTextGameObject");
+            
             TextGameObject.transform.SetParent(raidKillListGameObject.transform);
+            
             if (AHitmarkerPlugin.RaidKillChildDirection.Value)
-            {
                 TextGameObject.transform.SetSiblingIndex(0);
-            }
+            
             AmandsRaidKillfeedText tempAmandsRaidKillfeedText = TextGameObject.AddComponent<AmandsRaidKillfeedText>();
+            
             tempAmandsRaidKillfeedText.text = Start + End;
             tempAmandsRaidKillfeedText.color = AHitmarkerPlugin.KillTextColor.Value;
             tempAmandsRaidKillfeedText.fontSize = AHitmarkerPlugin.RaidKillFontSize.Value;
             tempAmandsRaidKillfeedText.outlineWidth = AHitmarkerPlugin.RaidKillFontOutline.Value;
+            
             if (AHitmarkerPlugin.KillFontUpperCase.Value)
-            {
                 tempAmandsRaidKillfeedText.fontStyles = FontStyles.UpperCase;
-            }
+            
             tempAmandsRaidKillfeedText.time = AHitmarkerPlugin.RaidKillTime.Value;
             tempAmandsRaidKillfeedText.OpacitySpeed = AHitmarkerPlugin.KillOpacitySpeed.Value;
             tempAmandsRaidKillfeedText.textAlignmentOptions = AHitmarkerPlugin.RaidKillTextAlignment.Value;
@@ -1255,30 +1369,35 @@ namespace AmandsHitmarker
         public static void ReloadFiles()
         {
             string[] Files = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Hitmarker/images/", "*.png");
+            
             foreach (string File in Files)
             {
                 LoadSprite(File);
             }
+            
             string[] RankFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Hitmarker/ranks/", "*.png");
+            
             foreach (string File in RankFiles)
             {
                 LoadRanks(File);
             }
+            
             string[] AudioFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Hitmarker/sounds/");
+            
             foreach (string File in AudioFiles)
             {
                 LoadAudioClip(File);
             }
         }
-        async static void LoadSprite(string path)
+        static async void LoadSprite(string path)
         {
             LoadedSprites[Path.GetFileName(path)] = await RequestSprite(path);
         }
-        async static void LoadRanks(string path)
+        static async void LoadRanks(string path)
         {
             LoadedRanks[Path.GetFileName(path)] = await RequestSprite(path);
         }
-        async static Task<Sprite> RequestSprite(string path)
+        static async Task<Sprite> RequestSprite(string path)
         {
             UnityWebRequest www = UnityWebRequestTexture.GetTexture(path);
             var SendWeb = www.SendWebRequest();
@@ -1286,17 +1405,14 @@ namespace AmandsHitmarker
             while (!SendWeb.isDone)
                 await Task.Yield();
 
-            if (www.isNetworkError || www.isHttpError)
-            {
+            if (www.result == UnityWebRequest.Result.ConnectionError || 
+                www.result == UnityWebRequest.Result.ProtocolError)
                 return null;
-            }
-            else
-            {
-                Texture2D texture = ((DownloadHandlerTexture)www.downloadHandler).texture;
-                Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+            
+            Texture2D texture = ((DownloadHandlerTexture)www.downloadHandler).texture;
+            Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
 
-                return sprite;
-            }
+            return sprite;
         }
         async static void LoadAudioClip(string path)
         {
@@ -1306,6 +1422,7 @@ namespace AmandsHitmarker
         {
             string extension = Path.GetExtension(path);
             AudioType audioType = AudioType.WAV;
+            
             switch (extension)
             {
                 case ".wav":
@@ -1315,21 +1432,19 @@ namespace AmandsHitmarker
                     audioType = AudioType.OGGVORBIS;
                     break;
             }
+            
             UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(path, audioType);
             var SendWeb = www.SendWebRequest();
 
             while (!SendWeb.isDone)
                 await Task.Yield();
 
-            if (www.isNetworkError || www.isHttpError)
-            {
+            if (www.result == UnityWebRequest.Result.ConnectionError || 
+                www.result == UnityWebRequest.Result.ProtocolError)
                 return null;
-            }
-            else
-            {
-                AudioClip audioclip = DownloadHandlerAudioClip.GetContent(www);
-                return audioclip;
-            }
+
+            AudioClip audioclip = DownloadHandlerAudioClip.GetContent(www);
+            return audioclip;
         }
         public static void UpdateDamageIndicator(object sender, EventArgs e)
         {
