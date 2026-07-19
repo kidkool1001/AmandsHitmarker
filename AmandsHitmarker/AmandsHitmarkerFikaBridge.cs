@@ -1,15 +1,15 @@
 ﻿using AmandsHitmarker;
 using Comfort.Common;
 using EFT;
-using Fika.Core.Coop.Utils;
+using Fika.Core.Main.Utils;
 using Fika.Core.Modding.Events;
 using Fika.Core.Networking;
 using Fika.Core.Modding;
 using UnityEngine;
 using System;
 using EFT.InventoryLogic;
-using Fika.Core.Coop.GameMode;
-using Fika.Core.Coop.Players;
+using Fika.Core.Main.GameMode;
+using Fika.Core.Main.Players;
 using Fika.Core;
 
 public static class AmandsHitmarkerFikaBridge
@@ -37,7 +37,7 @@ public static class AmandsHitmarkerFikaBridge
                     AmandsHitmarkerClass.killPlayerSide = packet.VictimSide;
                     AmandsHitmarkerClass.killRole = packet.VictimRole;
                     AmandsHitmarkerClass.killLevel = packet.VictimLevel;
-                    AmandsHitmarkerClass.killWeaponName = packet.WeaponName;
+                    AmandsHitmarkerClass.killWeaponName = AmandsHitmarkerHelper.Localized(packet.WeaponName, 0);
                     AmandsHitmarkerClass.killBodyPart = packet.BodyPart;
                     AmandsHitmarkerClass.killLethalDamageType = packet.LethalDamageType;
                     AmandsHitmarkerClass.killDistance = packet.Distance;
@@ -51,7 +51,7 @@ public static class AmandsHitmarkerFikaBridge
                         packet.AggressorSide,
                         packet.AggressorRole,
                         packet.AggressorName,
-                        packet.WeaponName,
+                        AmandsHitmarkerHelper.Localized(packet.WeaponName, 0),
                         packet.LethalDamageType,
                         packet.VictimSide,
                         packet.VictimRole,
@@ -80,9 +80,7 @@ public static class AmandsHitmarkerFikaBridge
             VictimRole = victim.Profile.Info.Settings.Role,
             VictimLevel = victim.Profile.Info.Level,
 
-            WeaponName = damageInfo.Weapon == null
-                ? "?"
-                : AmandsHitmarkerHelper.Localized(damageInfo.Weapon.ShortName, 0),
+            WeaponName = damageInfo.Weapon.ShortName,
             BodyPart = bodyPart,
             LethalDamageType = lethalDamageType,
             Distance = Vector3.Distance(aggressor.Position, victim.Position),
@@ -90,7 +88,7 @@ public static class AmandsHitmarkerFikaBridge
 
         if (Singleton<IFikaNetworkManager>.Instance is FikaServer server)
         {
-            server.SendDataToAll(ref packet, LiteNetLib.DeliveryMethod.ReliableOrdered);
+            server.SendData(ref packet, Fika.Core.Networking.LiteNetLib.DeliveryMethod.ReliableOrdered);
         }
     }
 }

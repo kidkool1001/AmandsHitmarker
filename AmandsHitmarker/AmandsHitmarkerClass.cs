@@ -13,7 +13,6 @@ namespace AmandsHitmarker
 {
     public class AmandsHitmarkerClass : MonoBehaviour
     {
-        public static AudioSource HitmarkerAudioSource;
         public static bool CanDebugReloadFiles;
         public static GameObject killListGameObject;
         public static AmandsKillfeedText LastAmandsKillfeedText;
@@ -142,6 +141,13 @@ namespace AmandsHitmarker
         private static Keyframe[] keys;// = { new Keyframe(0f, 0f, 0f, 0f, 0.25f, 0.25f), new Keyframe(0.5f, 1f, 0f, 0f, 0.5f, 0.5f), new Keyframe(1f, 0f, 0f, 0f, 0.25f, 0.25f) };
         private static AnimationCurve AlphaAnimationCurve = new AnimationCurve();
         private static Keyframe[] AlphaKeys;// = { new Keyframe(1f, 1f, 0f, 0f, 0.25f, 0.25f), new Keyframe(1.5f, 0f, 0f, 0f, 0.25f, 0.25f) };
+
+        private static AudioSource HitmarkerAudioSource { get; set; }
+
+        public void Initialize(AudioSource hitmarkerAudioSource)
+        {
+            HitmarkerAudioSource = hitmarkerAudioSource;
+        }
 
 
         public static void XPFormula()
@@ -1794,22 +1800,23 @@ namespace AmandsHitmarker
                 switch (AHitmarkerPlugin.RaidKillPreset.Value)
                 {
                     case ERaidKillPreset.TopLeft:
-                        raidKillrectTransform.localPosition = new Vector2(-((Screen.width / 2) - 30), 530f) + AHitmarkerPlugin.RaidKillPosition.Value;
+                        raidKillrectTransform.localPosition = new Vector2(-((Screen.width / 2) - 30) + 300f, 530f) + AHitmarkerPlugin.RaidKillPosition.Value;
                         raidKillrectTransform.pivot = new Vector2(0.0f, 1f);
                         break;
                     case ERaidKillPreset.TopRight:
-                        raidKillrectTransform.localPosition = new Vector2((Screen.width / 2) - 30, 530f) + AHitmarkerPlugin.RaidKillPosition.Value;
+                        raidKillrectTransform.localPosition = new Vector2(((Screen.width / 2) - 30) - 300f, 530f) + AHitmarkerPlugin.RaidKillPosition.Value;
                         raidKillrectTransform.pivot = new Vector2(1f, 1f);
                         break;
                     case ERaidKillPreset.BottomLeft:
-                        raidKillrectTransform.localPosition = new Vector2(-((Screen.width / 2) - 30), -280f) + AHitmarkerPlugin.RaidKillPosition.Value;
+                        raidKillrectTransform.localPosition = new Vector2(-((Screen.width / 2) - 30) + 300f, -280f) + AHitmarkerPlugin.RaidKillPosition.Value;
                         raidKillrectTransform.pivot = new Vector2(0f, 0f);
                         break;
                     case ERaidKillPreset.BottomRight:
-                        raidKillrectTransform.localPosition = new Vector2((Screen.width / 2) - 30, -420.0f) + AHitmarkerPlugin.RaidKillPosition.Value;
+                        raidKillrectTransform.localPosition = new Vector2(((Screen.width / 2) - 30) - 300f, -420.0f) + AHitmarkerPlugin.RaidKillPosition.Value;
                         raidKillrectTransform.pivot = new Vector2(1f, 0f);
                         break;
                 }
+                LayoutRebuilder.ForceRebuildLayoutImmediate(raidKillrectTransform);
             }
         }
         public static void UpdateMultiKillfeed(object sender, EventArgs e)
@@ -2244,5 +2251,10 @@ namespace AmandsHitmarker
         Off,
         On,
         OnFormula
+    }
+    public enum EHitmarkerMode
+    {
+        Local,
+        Packet
     }
 }
