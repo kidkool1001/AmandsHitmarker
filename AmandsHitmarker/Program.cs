@@ -10,11 +10,11 @@ using HarmonyLib;
 using System.Collections.Generic;
 using System;
 using System.Linq;
-using Fika.Core.Coop.Players;
-using Fika.Core.Coop.Utils;
-using Fika.Core.Coop.GameMode;
+using Fika.Core.Main.Players;
+using Fika.Core.Main.Utils;
+using Fika.Core.Main.GameMode;
 using EFT.HealthSystem;
-using Fika.Core.Coop.ObservedClasses;
+using Fika.Core.Main.ObservedClasses;
 using Fika.Core.Networking;
 using Comfort.Common;
 using Fika.Core;
@@ -22,7 +22,7 @@ using System.Net.Sockets;
 
 namespace AmandsHitmarker
 {
-    [BepInPlugin("com.Amanda.Hitmarker", "Hitmarker", "2.6.4")]
+    [BepInPlugin("com.Amands.Hitmarker", "Hitmarker", "3.0.0")]
     public class AHitmarkerPlugin : BaseUnityPlugin
     {
         public static GameObject Hook;
@@ -161,10 +161,7 @@ namespace AmandsHitmarker
 
         private void Awake()
         {
-            Hook = new GameObject("Hitmarker");
-            AmandsHitmarkerClassComponent = Hook.AddComponent<AmandsHitmarkerClass>();
-            AmandsHitmarkerClass.HitmarkerAudioSource = Hook.AddComponent<AudioSource>();
-            DontDestroyOnLoad(Hook);
+            //Debug.LogError("Hitmarker Awake()");
         }
         private void Start()
         {
@@ -298,6 +295,7 @@ namespace AmandsHitmarker
             DamageIndicatorSize = Config.Bind<float>("AmandsDamageIndicator", "DamageIndicatorSize", 0.7f, new ConfigDescription("", new AcceptableValueRange<float>(0.1f, 2.0f), new ConfigurationManagerAttributes { Order = 90, IsAdvanced = true }));
             DamageIndicatorOffset = Config.Bind<float>("AmandsDamageIndicator", "DamageIndicatorOffset", 350f, new ConfigDescription("", null, new ConfigurationManagerAttributes { Order = 80, IsAdvanced = true }));
 
+            new AmandsGameStartedPatch().Enable();
             new AmandsDamagePatch().Enable();
             new AmandsArmorDamagePatch().Enable();
             new AmandsKillPatch().Enable();
@@ -305,10 +303,11 @@ namespace AmandsHitmarker
             new AmandsMenuUIPatch().Enable();
             new AmandsBattleUIScreenPatch().Enable();
             new AmandsSSAAPatch().Enable();
-            new AmandsRaidAudioPatch().Enable();
 
             AmandsHitmarkerHelper.Init();
             AmandsHitmarkerFikaBridge.Init();
+
+            AmandsHitmarkerClass.ReloadFiles();
         }
         private static void HitmarkerButtonDrawer(ConfigEntryBase entry)
         {
@@ -420,7 +419,7 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(Player).GetMethod("Init", BindingFlags.Instance | BindingFlags.Public);
+            return AccessTools.Method(typeof(Player), nameof(Player.Init));
         }
         [PatchPostfix]
         private static void PatchPostFix(ref Player __instance)
@@ -440,7 +439,7 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(EFT.UI.MenuUI).GetMethod("Awake", BindingFlags.Instance | BindingFlags.Public);
+            return AccessTools.Method(typeof(EFT.UI.MenuUI), nameof(EFT.UI.MenuUI.Awake));
         }
         [PatchPostfix]
         private static void PatchPostFix(ref EFT.UI.MenuUI __instance)
@@ -456,7 +455,7 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(EFT.UI.EftBattleUIScreen).GetMethods(BindingFlags.Instance | BindingFlags.Public).First(x => x.Name == "Show" && x.GetParameters()[0].Name == "owner");
+            return AccessTools.Method(typeof(EFT.UI.EftBattleUIScreen), "Show", new[] { typeof(GamePlayerOwner) });
         }
         [PatchPostfix]
         private static void PatchPostFix(ref EFT.UI.EftBattleUIScreen __instance)
@@ -474,7 +473,7 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(SSAA).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
+            return AccessTools.Method(typeof(SSAA), "Awake", Type.EmptyTypes);
         }
         [PatchPostfix]
         private static void PatchPostFix(ref SSAA __instance)
@@ -486,15 +485,26 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(Player).GetMethod("ApplyDamageInfo", BindingFlags.Instance | BindingFlags.Public);
+            return AccessTools.Method(typeof(Player), nameof(Player.ApplyDamageInfo), new[] { typeof(DamageInfoStruct), typeof(EBodyPart), typeof(EBodyPartColliderType), typeof(float) });
         }
-        [PatchPostfix]
-        private static void PatchPostFix(ref Player __instance, DamageInfoStruct damageInfo, EBodyPart bodyPartType)
+
+        [PatchPrefix]
+        public static void Prefix(Player __instance, EBodyPart bodyPartType, ref float __state)
         {
-            // Temporary old version support code
             if (!FikaBackendUtils.IsServer) return;
+            if (__instance?.HealthController == null) return;
+
+            __state = __instance.HealthController.GetBodyPartHealth(bodyPartType).Current;
+        }
+
+        [PatchPostfix]
+        private static void PatchPostFix(Player __instance, DamageInfoStruct damageInfo, EBodyPart bodyPartType, float __state)
+        {
+            if (!FikaBackendUtils.IsServer) return;
+            if (__instance?.HealthController == null) return;
+
             bool IsYourPlayerAgresssor = false;
-            Player player = Traverse.Create(damageInfo).Field("Player").GetValue<object>() as Player;
+            Player player = damageInfo.Player?.iPlayer as Player;
             if (player != null)
             {
                 IsYourPlayerAgresssor = AmandsHitmarkerClass.Player != null && player == AmandsHitmarkerClass.Player;
@@ -508,8 +518,15 @@ namespace AmandsHitmarker
                     IsYourPlayerAgresssor = AggressorNickname == AmandsHitmarkerClass.playerNickname;
                 }
             }
+
+            float postHp = __instance.HealthController.GetBodyPartHealth(bodyPartType).Current;
+            float realDamage = Mathf.Max(0f, __state - postHp);      // actual HP removed, capped, no overkill
+            float armorDmg = damageInfo.DidArmorDamage;
+
             if (IsYourPlayerAgresssor)
             {
+                if (realDamage <= 0.01f) return;
+
                 if (AmandsHitmarkerClass.Player != null)
                 {
                     float distance = Vector3.Distance(AmandsHitmarkerClass.Player.Position, __instance.Position);
@@ -520,21 +537,25 @@ namespace AmandsHitmarker
                         return;
                     }
                 }
+
                 AmandsHitmarkerClass.hitmarker = true;
                 AmandsHitmarkerClass.damageInfo = damageInfo;
                 AmandsHitmarkerClass.bodyPart = bodyPartType;
+
                 if (AmandsHitmarkerClass.damageNumberTextMeshPro == null) return;
-                if ((AHitmarkerPlugin.EnableDamageNumber.Value && damageInfo.DidBodyDamage > 0.01f) || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f))
+                if ((AHitmarkerPlugin.EnableDamageNumber.Value && realDamage > 0.01f)
+                    || (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f))
                 {
                     string text = "";
-                    AmandsHitmarkerClass.DamageNumber += damageInfo.DidBodyDamage;
+                    AmandsHitmarkerClass.DamageNumber += realDamage;
                     if (AHitmarkerPlugin.EnableDamageNumber.Value && AmandsHitmarkerClass.DamageNumber > 0.01f)
                     {
                         text = ((int)AmandsHitmarkerClass.DamageNumber).ToString() + " ";
                     }
                     if (AHitmarkerPlugin.EnableArmorDamageNumber.Value && AmandsHitmarkerClass.ArmorDamageNumber > 0.01f)
                     {
-                        text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">" + (Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1)).ToString("F1") + "</color> ";
+                        text = text + "<color=#" + ColorUtility.ToHtmlStringRGB(AHitmarkerPlugin.ArmorColor.Value) + ">"
+                            + Math.Round(AmandsHitmarkerClass.ArmorDamageNumber, 1).ToString("F1") + "</color> ";
                     }
                     AmandsHitmarkerClass.damageNumberTextMeshPro.text = text;
                     AmandsHitmarkerClass.damageNumberTextMeshPro.color = AHitmarkerPlugin.HitmarkerColor.Value;
@@ -542,22 +563,29 @@ namespace AmandsHitmarker
                     AmandsHitmarkerClass.UpdateDamageNumber = false;
                 }
             }
-            else if (!IsYourPlayerAgresssor)
+            else
             {
                 IPlayerOwner playerOwner = damageInfo.Player;
                 if (playerOwner == null) return;
                 Player aggressor = Singleton<GameWorld>.Instance.GetAlivePlayerByProfileID(playerOwner.iPlayer.ProfileId);
                 if (aggressor == null) return;
-                Player victim = __instance;
 
-                AmandsHitmarkerFikaBridge.SendHitmarker(aggressor, victim, damageInfo, bodyPartType);
+                if (realDamage <= 0.01f && armorDmg <= 0.01f) return;
+
+                float distance = Vector3.Distance(aggressor.Position, __instance.Position);
+                if (distance < AHitmarkerPlugin.StartDistance.Value || distance > AHitmarkerPlugin.EndDistance.Value)
+                    return;
+
+                damageInfo.Damage = realDamage;
+                AmandsHitmarkerFikaBridge.SendHitmarker(aggressor, __instance, damageInfo, bodyPartType);
             }
-            else
+
+            if (AmandsHitmarkerClass.Player != null
+                && __instance == AmandsHitmarkerClass.Player
+                && AHitmarkerPlugin.EnableDamageIndicator.Value
+                && AmandsHitmarkerClass.amandsDamageIndicator != null)
             {
-                if (AmandsHitmarkerClass.Player != null && __instance == AmandsHitmarkerClass.Player && AHitmarkerPlugin.EnableDamageIndicator.Value && AmandsHitmarkerClass.amandsDamageIndicator != null)
-                {
-                    AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(damageInfo.MasterOrigin);
-                }
+                AmandsHitmarkerClass.amandsDamageIndicator.SetLocation(damageInfo.MasterOrigin);
             }
         }
     }
@@ -565,7 +593,7 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(ArmorComponent).GetMethod("ApplyDurabilityDamage", BindingFlags.Instance | BindingFlags.Public);
+            return AccessTools.Method(typeof(ArmorComponent), nameof(ArmorComponent.ApplyDurabilityDamage));
         }
         [PatchPrefix]
         private static void PatchPrefix(ref ArmorComponent __instance, float armorDamage, List<ArmorComponent> armorComponents)
@@ -588,7 +616,7 @@ namespace AmandsHitmarker
     {
         protected override MethodBase GetTargetMethod()
         {
-            return typeof(Player).GetMethod("OnBeenKilledByAggressor", BindingFlags.Instance | BindingFlags.Public);
+            return AccessTools.Method(typeof(Player), nameof(Player.OnBeenKilledByAggressor));
         }
         [PatchPostfix]
         private static void PatchPostFix(ref Player __instance, Player aggressor, DamageInfoStruct damageInfo, EBodyPart bodyPart, EDamageType lethalDamageType)
@@ -601,7 +629,7 @@ namespace AmandsHitmarker
                 AmandsHitmarkerClass.killDamageInfo = damageInfo;
                 AmandsHitmarkerClass.killBodyPart = bodyPart;
                 AmandsHitmarkerClass.killRole = Traverse.Create(Traverse.Create(__instance.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>();
-                var coopAggressor = aggressor as CoopPlayer;
+                var coopAggressor = aggressor as FikaPlayer;
                 if (coopAggressor != null)
                 {
                     var sessionCounters = coopAggressor.Profile.EftStats.SessionCounters;
@@ -622,14 +650,14 @@ namespace AmandsHitmarker
             }
             else if (!aggressor.IsYourPlayer && FikaBackendUtils.IsServer)
             {
-                if (aggressor is CoopPlayer coopAggressor && coopAggressor != null)
+                if (aggressor is FikaPlayer coopAggressor && coopAggressor != null)
                 {
                     AmandsHitmarkerFikaBridge.SendKill(aggressor, __instance, damageInfo, bodyPart, lethalDamageType);
                 }  
             }
             else if (AmandsHitmarkerClass.Player != null && aggressor == AmandsHitmarkerClass.Player && __instance != AmandsHitmarkerClass.Player && FikaBackendUtils.IsClient)
             {
-                var coopAggressor = aggressor as CoopPlayer;
+                var coopAggressor = aggressor as FikaPlayer;
                 if (coopAggressor != null)
                 {
                     var sessionCounters = coopAggressor.Profile.EftStats.SessionCounters;
@@ -669,22 +697,19 @@ namespace AmandsHitmarker
         }
     }
 
-    public class AmandsRaidAudioPatch : ModulePatch
+    public class AmandsGameStartedPatch : ModulePatch
     {
         protected override MethodBase GetTargetMethod()
         {
-            // small window between loading in and in raid where sound doesn't work w.e
-            return typeof(CoopGame).GetProperty("RaidStarted", BindingFlags.Instance | BindingFlags.Public)
-                                   .GetSetMethod(true);
+            return typeof(GameWorld).GetMethod(nameof(GameWorld.OnGameStarted));
         }
 
         [PatchPostfix]
-        private static void PatchPostFix(bool value)
+        public static void PatchPostfix(GameWorld __instance)
         {
-            if (value)
-            {
-                AmandsHitmarkerClass.ReloadFiles();
-            }
+            var hitmarkerClass = __instance.gameObject.AddComponent<AmandsHitmarkerClass>();
+            var hitmarkerAudioSource = __instance.gameObject.AddComponent<AudioSource>();
+            hitmarkerClass.Initialize(hitmarkerAudioSource);
         }
     }
 }
