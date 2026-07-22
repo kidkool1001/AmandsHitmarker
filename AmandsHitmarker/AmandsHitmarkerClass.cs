@@ -1,12 +1,13 @@
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.Networking;
+using System.Threading.Tasks;
+using AmandsHitmarkerPatches;
 using EFT;
 using TMPro;
+using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.UI;
 using static EFT.Player;
 
 namespace AmandsHitmarker
@@ -20,8 +21,6 @@ namespace AmandsHitmarker
         public static DamageInfoStruct damageInfo = new DamageInfoStruct();
         public static EBodyPart bodyPart = EBodyPart.Chest;
         public static bool armorHitmarker;
-        //public static float armorDamage;
-        //public static DamageInfoStruct armorDamageInfo;
         public static bool armorBreak;
         public static bool killHitmarker;
         public static DamageInfoStruct killDamageInfo = new DamageInfoStruct();
@@ -1260,17 +1259,20 @@ namespace AmandsHitmarker
         }
         public static void ReloadFiles()
         {
-            string[] Files = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Hitmarker/images/", "*.png");
+            string imagesPath = Path.Combine(AHitmarkerPlugin.PluginFolder, "Hitmarker", "images");
+            string[] Files = Directory.GetFiles(imagesPath, "*.png");
             foreach (string File in Files)
             {
                 LoadSprite(File);
             }
-            string[] RankFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Hitmarker/ranks/", "*.png");
+            string ranksPath = Path.Combine(AHitmarkerPlugin.PluginFolder, "Hitmarker", "ranks");
+            string[] RankFiles = Directory.GetFiles(ranksPath, "*.png");
             foreach (string File in RankFiles)
             {
                 LoadRanks(File);
             }
-            string[] AudioFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Hitmarker/sounds/");
+            string soundsPath = Path.Combine(AHitmarkerPlugin.PluginFolder, "Hitmarker", "sounds");
+            string[] AudioFiles = Directory.GetFiles(soundsPath);
             foreach (string File in AudioFiles)
             {
                 LoadAudioClip(File);
@@ -2254,7 +2256,7 @@ namespace AmandsHitmarker
     }
     public enum EHitmarkerMode
     {
-        Local,
-        Packet
+        Packets,
+        Local
     }
 }

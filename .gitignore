@@ -8,3 +8,9 @@
 /.vs
 /AmandsHitmarker/AmandsHitmarker.csproj
 /AmandsHitmarker/References
+/AmandsHitmarkerFikaSync/bin/Release/netstandard2.1
+/AmandsHitmarkerFikaSync/obj
+/AmandsHitmarkerFikaSync/References
+/Hitmarker
+/package.ps1
+/Package

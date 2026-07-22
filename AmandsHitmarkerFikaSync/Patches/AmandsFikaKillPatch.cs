@@ -1,0 +1,99 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Text;
+using AmandsHitmarker;
+using EFT;
+using Fika.Core.Main.Players;
+using Fika.Core.Main.Utils;
+using HarmonyLib;
+using SPT.Reflection.Patching;
+using UnityEngine;
+
+namespace AmandsHitmarkerPatches
+{
+    public class AmandsFikaKillPatch : ModulePatch
+    {
+        protected override MethodBase GetTargetMethod()
+        {
+            return AccessTools.Method(typeof(Player), nameof(Player.OnBeenKilledByAggressor));
+        }
+        [PatchPostfix]
+        private static void PatchPostFix(ref Player __instance, Player aggressor, DamageInfoStruct damageInfo, EBodyPart bodyPart, EDamageType lethalDamageType)
+        {
+            if (AmandsHitmarkerClass.Player != null && aggressor == AmandsHitmarkerClass.Player && __instance != AmandsHitmarkerClass.Player && FikaBackendUtils.IsServer)
+            {
+                float distance = Vector3.Distance(aggressor.Position, __instance.Position);
+                if (distance < AHitmarkerPlugin.StartDistance.Value || distance > AHitmarkerPlugin.EndDistance.Value) return;
+                AmandsHitmarkerClass.killHitmarker = true;
+                AmandsHitmarkerClass.killDamageInfo = damageInfo;
+                AmandsHitmarkerClass.killBodyPart = bodyPart;
+                AmandsHitmarkerClass.killRole = Traverse.Create(Traverse.Create(__instance.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>();
+                var coopAggressor = aggressor as FikaPlayer;
+                if (coopAggressor != null)
+                {
+                    var sessionCounters = coopAggressor.Profile.EftStats.SessionCounters;
+                    int totalXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillBase);
+                    int xpForThisKill = totalXp - AmandsHitmarkerClass.lastSessionXp;
+                    AmandsHitmarkerClass.killExperience = xpForThisKill;
+                    AmandsHitmarkerClass.lastSessionXp = totalXp;
+                }
+                AmandsHitmarkerClass.killPlayerName = __instance.Profile.Nickname;
+                AmandsHitmarkerClass.killPlayerSide = __instance.Side;
+                AmandsHitmarkerClass.killDistance = distance;
+                AmandsHitmarkerClass.killLethalDamageType = lethalDamageType;
+                AmandsHitmarkerClass.killLevel = __instance.Profile.Info.Level;
+                AmandsHitmarkerClass.killWeaponName = damageInfo.Weapon == null ? "?" : AmandsHitmarkerHelper.Localized(damageInfo.Weapon.ShortName, 0);
+                AmandsHitmarkerClass.Kills += 1;
+                AmandsHitmarkerClass.Killfeed();
+                AmandsHitmarkerClass.MultiKillfeed();
+            }
+            else if (!aggressor.IsYourPlayer && FikaBackendUtils.IsServer)
+            {
+                if (aggressor is FikaPlayer coopAggressor && coopAggressor != null)
+                {
+                    AmandsHitmarkerFikaSync.SendKill(aggressor, __instance, damageInfo, bodyPart, lethalDamageType);
+                }
+            }
+            else if (AmandsHitmarkerClass.Player != null && aggressor == AmandsHitmarkerClass.Player && __instance != AmandsHitmarkerClass.Player && FikaBackendUtils.IsClient)
+            {
+                var coopAggressor = aggressor as FikaPlayer;
+                if (coopAggressor != null)
+                {
+                    var sessionCounters = coopAggressor.Profile.EftStats.SessionCounters;
+
+                    // Base kill XP
+                    int totalXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillBase);
+                    int xpForThisKill = totalXp - AmandsHitmarkerClass.lastSessionXp;
+                    AmandsHitmarkerClass.killExperience = xpForThisKill;
+                    AmandsHitmarkerClass.lastSessionXp = totalXp;
+
+                    // Headshot XP
+                    int totalHeadshotXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillBodyPartBonus);
+                    int headshotXpForThisKill = totalHeadshotXp - AmandsHitmarkerClass.lastHeadshotXp;
+                    AmandsHitmarkerClass.HeadXp = headshotXpForThisKill;
+                    AmandsHitmarkerClass.lastHeadshotXp = totalHeadshotXp;
+
+                    // Streak XP
+                    int totalStreakXp = sessionCounters.GetInt(SessionCounterTypesAbstractClass.ExpKillStreakBonus);
+                    int streakXpForThisKill = totalStreakXp - AmandsHitmarkerClass.lastStreakXp;
+                    if (streakXpForThisKill > 0)
+                    {
+                        AmandsHitmarkerClass.CurrentComboCount += 1;
+                    }
+                    else
+                    {
+                        AmandsHitmarkerClass.CurrentComboCount = 0;
+                    }
+                    AmandsHitmarkerClass.StreakXp = streakXpForThisKill;
+                    AmandsHitmarkerClass.lastStreakXp = totalStreakXp;
+                }
+            }
+            if (AHitmarkerPlugin.EnableRaidKillfeed.Value && aggressor != null && FikaBackendUtils.IsServer)
+            {
+                if (AmandsHitmarkerClass.Player != null && AmandsHitmarkerClass.Player != aggressor && Vector3.Distance(AmandsHitmarkerClass.Player.Position, __instance.Position) > AHitmarkerPlugin.RaidKillDistance.Value) return;
+                AmandsHitmarkerClass.RaidKillfeed(aggressor.Side, Traverse.Create(Traverse.Create(aggressor.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>(), (aggressor.Side == EPlayerSide.Savage ? AmandsHitmarkerHelper.Transliterate(aggressor.Profile.Nickname) : aggressor.Profile.Nickname), damageInfo.Weapon == null ? "?" : AmandsHitmarkerHelper.Localized(damageInfo.Weapon.ShortName, 0), lethalDamageType, __instance.Side, Traverse.Create(Traverse.Create(__instance.Profile.Info).Field("Settings").GetValue<object>()).Field("Role").GetValue<WildSpawnType>(), (__instance.Side == EPlayerSide.Savage ? AmandsHitmarkerHelper.Transliterate(__instance.Profile.Nickname) : __instance.Profile.Nickname));
+            }
+        }
+    }
+}

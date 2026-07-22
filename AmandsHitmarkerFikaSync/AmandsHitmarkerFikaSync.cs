@@ -8,7 +8,7 @@ using Fika.Core.Modding;
 using UnityEngine;
 using System;
 
-public static class AmandsHitmarkerFikaBridge
+public static class AmandsHitmarkerFikaSync
 {
     private static bool _initialized = false;
 
