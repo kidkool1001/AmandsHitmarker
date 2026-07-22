@@ -303,7 +303,6 @@ namespace AmandsHitmarker
 
 
             AmandsHitmarkerHelper.Init();
-            AmandsHitmarkerFikaBridge.Init();
 
             AmandsHitmarkerClass.ReloadFiles();
 
